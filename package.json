@@ -12,6 +12,6 @@
   "dependencies": {
     "dotenv": "^16.3.1",
     "node-fetch": "^2.6.1",
-    "node-xlsx": "^0.23.0"
+    "read-excel-file": "^5.6.1"
   }
 }
