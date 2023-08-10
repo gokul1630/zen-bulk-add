@@ -3,15 +3,20 @@ const readXlsx = require('read-excel-file/node');
 const { writeFileSync, open } = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
-const schema = require('./schema');
+const { studentSchema, mentorSchema } = require('./schema');
+const yargs = require('yargs/yargs')
+const { hideBin } = require('yargs/helpers')
+const argv = yargs(hideBin(process.argv)).argv
 
 dotenv.config();
 
 const dateObj = (...args) => new Date(...args);
 
-const outputFileName = `output_${dateObj().getDate()}-${dateObj().getMonth()}-${dateObj().getFullYear()}.csv`;
+const studentOutputFileName = `students-output_${dateObj().getDate()}-${dateObj().getMonth()}-${dateObj().getFullYear()}.csv`;
+const mentorOutputFileName = `mentors-output_${dateObj().getDate()}-${dateObj().getMonth()}-${dateObj().getFullYear()}.csv`;
 
-const outputFile = path.join(__dirname, outputFileName);
+const studentOutputFile = path.join(__dirname, studentOutputFileName);
+const mentorOutputFile = path.join(__dirname, mentorOutputFileName);
 
 const token = process.env.TOKEN;
 const BACKEND_URL = process.env.BACKEND_URL;
@@ -20,48 +25,75 @@ const indexResetOffset = 0;
 
 (async () => {
 	try {
-		
-	open(outputFileName, 'r', (err, res) => {
 
-		if (!res) {
-			const outputData = 'name, email, mobile, batch, message\n';
-			writeFileSync(outputFile, outputData, { flag: 'a' });
-			return;
+		open(argv?.mentor ? mentorOutputFileName : studentOutputFileName, 'r', (err, res) => {
+
+			if (!res) {
+				const outputData = 'name, email, mobile, batch, message\n';
+				writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, outputData, { flag: 'a' });
+				return;
+			}
+			writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, '\n', { flag: 'a' });
+		});
+
+		const data = await readXlsx(argv?.mentor ? 'mentors.xlsx' : 'students.xlsx', { schema: argv?.mentor ? mentorSchema : studentSchema });
+
+		let batchData = {};
+		let rolesData = {}
+		if (argv?.mentor){
+			const batchResponse = await fetch(`${BACKEND_URL}/manageValues/get-user-roles`, {
+				method: 'GET',
+				headers: { 'Content-Type': 'application/json', authorization: `bearer ${token}` },
+			});
+	
+			rolesData = await batchResponse.json();
+		} else {
+			const batchResponse = await fetch(`${BACKEND_URL}/batch/all-names`, {
+				method: 'GET',
+				headers: { 'Content-Type': 'application/json', authorization: `bearer ${token}` },
+			});
+	
+			batchData = await batchResponse.json();
 		}
-		writeFileSync(outputFile, '\n', { flag: 'a' });
-	});
 
-    const data = await readXlsx('students.xlsx', { schema });
-    const batchResponse = await fetch(`${BACKEND_URL}/batch/all-names`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json', authorization: `bearer ${token}` },
-    });
+		for (let index = indexResetOffset; index < data?.rows.length; index += 1) {
+			const element = data?.rows[index];
 
-    const batchData = await batchResponse.json();
+			const name = element?.name;
+			const email = element?.email;
+			const batch = element?.batch;
+			const mobile = element?.mobile;
+			const role = element?.role;
+			const primaryEmail = element?.primaryEmail;
+			const secondaryEmail = element?.secondaryEmail;
 
-    for (let index = indexResetOffset; index < data?.rows.length; index += 1) {
-        const element = data?.rows[index];
 
-        const { name, email, mobile, batch } = element;
+			const url = argv?.mentor ? `${BACKEND_URL}/users/create` : `${BACKEND_URL}/users/student/create`
 
-        const batchName = batchData?.batches?.find((key) => key?._id === batch)?.name;
+			setTimeout(async () => {
+				const response = await fetch(url, {
+					method: 'POST',
+					body: argv?.mentor ? JSON.stringify({ name, email: secondaryEmail || primaryEmail, mobile, role }) : JSON.stringify(element),
+					headers: { 'Content-Type': 'application/json', authorization: `bearer ${token}` },
+				});
 
-        setTimeout(async () => {
-            const response = await fetch(`${BACKEND_URL}/users/student/create`, {
-                method: 'POST',
-                body: JSON.stringify(element),
-                headers: { 'Content-Type': 'application/json', authorization: `bearer ${token}` },
-            });
+				const res = await response.json();
 
-            const res = await response.json();
+				let outputData
+				if (!argv?.mentor) {
+					const { name: batchName } = batchData?.batches?.find((key) => key?._id === batch);
+					outputData = `${name}, ${email}, ${mobile}, ${batchName}, ${res?.message}\n`;
+					console.log(index + 1, res?.message, ' ---> ', batchName, email);
+				} else {
+					const { name: roleName } = rolesData?.roles?.find((key) => key?._id === role);
+					outputData = `${name}, ${secondaryEmail || primaryEmail}, ${mobile}, ${roleName}, ${res?.message}\n`;
+					console.log(index + 1, res?.message, ' ---> ', roleName, secondaryEmail || primaryEmail);
+				}
+				
+				writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, outputData, { flag: 'a' });
 
-            const outputData = `${name}, ${email}, ${mobile}, ${batchName}, ${res?.message}\n`;
-
-            writeFileSync(outputFile, outputData, { flag: 'a' });
-
-            console.log(index + 1, res?.message, ' ---> ', batchName, email);
-        }, 1000 * (index - indexResetOffset));
-    }
+			}, 1000 * (index - indexResetOffset));
+		}
 	} catch (error) {
 		console.log(error);
 	}

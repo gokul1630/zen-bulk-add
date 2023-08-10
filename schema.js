@@ -1,4 +1,4 @@
-const schema = {
+const studentSchema = {
 	'Student Name': {
 		prop: 'name',
 		type: String,
@@ -17,4 +17,31 @@ const schema = {
 	}
 };
 
-module.exports = schema
+
+const mentorSchema = {
+	'Mail': {
+		prop: 'primaryEmail',
+		type: String
+	},
+	'alternativer Email ID': {
+		prop: 'secondaryEmail',
+		type: String
+	},
+	'Name': {
+		prop: 'name',
+		type: String
+	},
+	'contact': {
+		prop: 'mobile',
+		type: String
+	},
+	'Role': {
+		prop: 'role',
+		type: String
+	},
+
+}
+module.exports = {
+	studentSchema,
+	mentorSchema
+}
