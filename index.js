@@ -29,7 +29,12 @@ const indexResetOffset = 0;
 		open(argv?.mentor ? mentorOutputFileName : studentOutputFileName, 'r', (err, res) => {
 
 			if (!res) {
-				const outputData = 'name, email, mobile, batch, message\n';
+				let outputData
+				if (argv?.mentor) {
+					outputData = 'name, email, mobile, role, message\n';
+				} else {
+					outputData = 'name, email, mobile, batch, message\n';
+				}
 				writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, outputData, { flag: 'a' });
 				return;
 			}
