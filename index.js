@@ -35,29 +35,33 @@ const indexResetOffset = 0;
 				} else {
 					outputData = 'name, email, mobile, batch, message\n';
 				}
-				writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, outputData, { flag: 'a' });
+				if (!argv?.dry) {
+					writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, outputData, { flag: 'a' });
+				}
 				return;
 			}
-			writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, '\n', { flag: 'a' });
+			if (!argv?.dry) {
+				writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, '\n', { flag: 'a' });
+			}
 		});
 
 		const data = await readXlsx(argv?.mentor ? 'mentors.xlsx' : 'students.xlsx', { schema: argv?.mentor ? mentorSchema : studentSchema });
 
 		let batchData = {};
 		let rolesData = {}
-		if (argv?.mentor){
+		if (argv?.mentor) {
 			const batchResponse = await fetch(`${BACKEND_URL}/manageValues/get-user-roles`, {
 				method: 'GET',
 				headers: { 'Content-Type': 'application/json', authorization: `bearer ${token}` },
 			});
-	
 			rolesData = await batchResponse.json();
+
 		} else {
 			const batchResponse = await fetch(`${BACKEND_URL}/batch/all-names`, {
 				method: 'GET',
 				headers: { 'Content-Type': 'application/json', authorization: `bearer ${token}` },
 			});
-	
+
 			batchData = await batchResponse.json();
 		}
 
@@ -71,33 +75,44 @@ const indexResetOffset = 0;
 			const role = element?.role;
 			const primaryEmail = element?.primaryEmail;
 			const secondaryEmail = element?.secondaryEmail;
+			const program = element?.program
 
 
 			const url = argv?.mentor ? `${BACKEND_URL}/users/create` : `${BACKEND_URL}/users/student/create`
 
-			setTimeout(async () => {
-				const response = await fetch(url, {
-					method: 'POST',
-					body: argv?.mentor ? JSON.stringify({ name, email: secondaryEmail || primaryEmail, mobile, role }) : JSON.stringify(element),
-					headers: { 'Content-Type': 'application/json', authorization: `bearer ${token}` },
-				});
+			if (!argv?.dry) {
+				setTimeout(async () => {
+					const response = await fetch(url, {
+						method: 'POST',
+						body: argv?.mentor ? JSON.stringify({ name, email: secondaryEmail || primaryEmail, mobile, role }) : JSON.stringify(element),
+						headers: { 'Content-Type': 'application/json', authorization: `bearer ${token}` },
+					});
 
-				const res = await response.json();
+					const res = await response.json();
 
-				let outputData
+					let outputData
+					if (!argv?.mentor) {
+						const { name: batchName } = batchData?.batches?.find((key) => key?._id === batch);
+						outputData = `${name}, ${email}, ${mobile}, ${batchName}, ${res?.message}\n`;
+						console.log(index + 1, res?.message, ' ---> ', batchName, email);
+					} else {
+						const { name: roleName } = rolesData?.roles?.find((key) => key?._id === role);
+						outputData = `${name}, ${secondaryEmail || primaryEmail}, ${mobile}, ${roleName}, ${res?.message}\n`;
+						console.log(index + 1, res?.message, ' ---> ', roleName, secondaryEmail || primaryEmail);
+					}
+
+					writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, outputData, { flag: 'a' });
+
+				}, 1000 * (index - indexResetOffset))
+			} else {
 				if (!argv?.mentor) {
 					const { name: batchName } = batchData?.batches?.find((key) => key?._id === batch);
-					outputData = `${name}, ${email}, ${mobile}, ${batchName}, ${res?.message}\n`;
-					console.log(index + 1, res?.message, ' ---> ', batchName, email);
+					console.log(index + 1, batchName, program, ' ---> ', email);
 				} else {
 					const { name: roleName } = rolesData?.roles?.find((key) => key?._id === role);
-					outputData = `${name}, ${secondaryEmail || primaryEmail}, ${mobile}, ${roleName}, ${res?.message}\n`;
-					console.log(index + 1, res?.message, ' ---> ', roleName, secondaryEmail || primaryEmail);
+					console.log(index + 1, roleName, ' ---> ', secondaryEmail || primaryEmail);
 				}
-				
-				writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, outputData, { flag: 'a' });
-
-			}, 1000 * (index - indexResetOffset));
+			}
 		}
 	} catch (error) {
 		console.log(error);
