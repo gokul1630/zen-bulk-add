@@ -22,6 +22,11 @@ const token = process.env.TOKEN;
 const BACKEND_URL = process.env.BACKEND_URL;
 
 const indexResetOffset = 0;
+const programs = {
+	"64d36a7aeca69f00773c53f9": "27",
+	"64d36a93d2077700769bb524": "28",
+	"64d36ab4ca58e400768b6887": "29"
+};
 
 (async () => {
 	try {
@@ -75,7 +80,7 @@ const indexResetOffset = 0;
 			const role = element?.role;
 			const primaryEmail = element?.primaryEmail;
 			const secondaryEmail = element?.secondaryEmail;
-			const program = element?.program
+			const program = programs[batch] || 0;
 
 
 			const url = argv?.mentor ? `${BACKEND_URL}/users/create` : `${BACKEND_URL}/users/student/create`
@@ -84,7 +89,7 @@ const indexResetOffset = 0;
 				setTimeout(async () => {
 					const response = await fetch(url, {
 						method: 'POST',
-						body: argv?.mentor ? JSON.stringify({ name, email: secondaryEmail || primaryEmail, mobile, role }) : JSON.stringify(element),
+						body: argv?.mentor ? JSON.stringify({ name, email: secondaryEmail || primaryEmail, mobile, role }) : JSON.stringify({...element, program}),
 						headers: { 'Content-Type': 'application/json', authorization: `bearer ${token}` },
 					});
 
