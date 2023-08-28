@@ -34,6 +34,12 @@ const programs = {
 	"64d36ab4ca58e400768b6887": "29"
 };
 
+const courseIds = {
+	"fullstackwithpythonprogramming": "pythonfullstack",
+	"chatgpt": "chatgptpro",
+	"devops": "advanceddevops",
+};
+
 (async () => {
 	try {
 
@@ -44,7 +50,7 @@ const programs = {
 				if (argv?.mentor) {
 					outputData = 'name, email, mobile, role, message\n';
 				} else {
-					outputData = 'name, email, mobile, batch, message\n';
+					outputData = 'name, email, mobile, batch, message, courseActivated\n';
 				}
 				if (!argv?.dry) {
 					writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, outputData, { flag: 'a' });
@@ -75,12 +81,14 @@ const programs = {
 	
 				const name = element?.name;
 				const email = element?.email;
-				const batch = batches[element?.batch.toLowerCase().replace(/\s/g,'')];
-				const mobile = element?.mobile;
+				const batchName = element?.batch.toLowerCase().replace(/\s/g,'')
+				const batch = batches[batchName];
+				const mobile = element?.mobile || "";
 				const role = element?.role;
 				const primaryEmail = element?.primaryEmail;
 				const secondaryEmail = element?.secondaryEmail;
 				const program = programs[batch] || 0;
+				const courseId = courseIds[batchName];
 	
 	
 				const url = argv?.mentor ? `${BACKEND_URL}/users/create` : `${BACKEND_URL}/users/student/create`
@@ -89,16 +97,33 @@ const programs = {
 					setTimeout(async () => {
 						const response = await fetch(url, {
 							method: 'POST',
-							body: argv?.mentor ? JSON.stringify({ name, email: secondaryEmail || primaryEmail, mobile, role }) : JSON.stringify({...element, batch, program}),
+							body: argv?.mentor ? JSON.stringify({ name, email: secondaryEmail || primaryEmail, mobile, role }) : JSON.stringify({...element, batch, program, mobile}),
 							headers: { 'Content-Type': 'application/json', authorization: `bearer ${token}` },
 						});
+	
+
+						let guviResponse 
+						if(!argv?.mentor){
+							const resp = await fetch(process.env.GUVI_ENDPOINT, {
+								method: 'POST',
+								body: JSON.stringify({
+									"apiKey": process.env.GUVI_API_KEY,
+									"clientId": process.env.GUVI_CLIENT_ID,
+									"userName": name,
+									"mobileNumber": mobile,
+									"userEmail": email,
+									"courseId": courseId
+								}),
+							});
+							guviResponse = await resp.json()
+						}
 	
 						const res = await response.json();
 	
 						let outputData
 						if (!argv?.mentor) {
-							outputData = `${name}, ${email}, ${mobile}, ${element?.batch}, ${res?.message}\n`;
-							console.log(index + 1, res?.message, ' ---> ', element?.batch, email);
+							outputData = `${name}, ${email}, ${mobile}, ${element?.batch}, ${res?.message}, ${guviResponse?.status}\n`;
+							console.log(index + 1, res?.message, ' ---> ', guviResponse?.status, element?.batch, email);
 						} else {
 							const { name: roleName } = rolesData?.roles?.find((key) => key?._id === role);
 							outputData = `${name}, ${secondaryEmail || primaryEmail}, ${mobile}, ${roleName}, ${res?.message}\n`;
@@ -110,7 +135,7 @@ const programs = {
 					}, 1000 * (index - indexResetOffset))
 				} else {
 					if (!argv?.mentor) {
-						console.log(index + 1, element?.batch, program, ' ---> ', email);
+						console.log(index + 1, element?.batch, program, courseId,  ' ---> ', email);
 					} else {
 						const { name: roleName } = rolesData?.roles?.find((key) => key?._id === role);
 						console.log(index + 1, roleName, ' ---> ', secondaryEmail || primaryEmail);
