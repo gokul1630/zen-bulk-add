@@ -14,6 +14,10 @@ const studentSchema = {
 	'Email Address': {
 		prop: 'email',
 		type: String,
+	},
+	'Timestamp': {
+		prop: 'time',
+		type: String,
 	}
 };
 

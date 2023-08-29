@@ -8,6 +8,12 @@ const yargs = require('yargs/yargs')
 const { hideBin } = require('yargs/helpers')
 const argv = yargs(hideBin(process.argv)).argv
 
+const indexResetOffset = 0;
+const fileredDate = [
+"8//2023",				
+"8//2023",				
+]
+
 dotenv.config();
 
 const dateObj = (...args) => new Date(...args);
@@ -21,7 +27,6 @@ const mentorOutputFile = path.join(__dirname, mentorOutputFileName);
 const token = process.env.TOKEN;
 const BACKEND_URL = process.env.BACKEND_URL;
 
-const indexResetOffset = 0;
 const batches = {
 	"fullstackwithpythonprogramming": "64d36ab4ca58e400768b6887",
 	"chatgpt": "64d36a7aeca69f00773c53f9",
@@ -62,11 +67,19 @@ const courseIds = {
 			}
 		});
 
-		const data = await readXlsx(argv?.mentor ? 'mentors.xlsx' : 'students.xlsx', { schema: argv?.mentor ? mentorSchema : studentSchema });
+		let data = await readXlsx(argv?.mentor ? 'mentors.xlsx' : 'students.xlsx', { schema: argv?.mentor ? mentorSchema : studentSchema });
+		console.log(`Total: ${data.rows.length}`)
+		if(fileredDate.length){
+			data.rows = data?.rows?.filter((time) => {
+				const date = time?.time.split(' ')[0]
+				return fileredDate.includes(date)
+			})
+		}
+		console.log(`Filtered: ${data.rows.length}\n`)
 
 		let rolesData = {}
 		if(argv?.console){
-			console.log(JSON.stringify(data.rows.map(k => k?.email)), data.rows.length)
+			console.log(JSON.stringify(data.rows?.map(k => k?.email)))
 		} else {
 			if (argv?.mentor) {
 				const batchResponse = await fetch(`${BACKEND_URL}/manageValues/get-user-roles`, {
@@ -76,7 +89,7 @@ const courseIds = {
 				rolesData = await batchResponse.json();
 			}
 	
-			for (let index = indexResetOffset; index < data?.rows.length; index += 1) {
+			for (let index = indexResetOffset; index < data?.rows?.length; index += 1) {
 				const element = data?.rows[index];
 	
 				const name = element?.name;
@@ -89,8 +102,8 @@ const courseIds = {
 				const secondaryEmail = element?.secondaryEmail;
 				const program = programs[batch] || 0;
 				const courseId = courseIds[batchName];
-	
-	
+
+
 				const url = argv?.mentor ? `${BACKEND_URL}/users/create` : `${BACKEND_URL}/users/student/create`
 	
 				if (!argv?.dry) {
@@ -132,7 +145,7 @@ const courseIds = {
 	
 						writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, outputData, { flag: 'a' });
 	
-					}, 1000 * (index - indexResetOffset))
+					}, 500 * (index - indexResetOffset))
 				} else {
 					if (!argv?.mentor) {
 						console.log(index + 1, element?.batch, program, courseId,  ' ---> ', email);
