@@ -8,10 +8,11 @@ const yargs = require('yargs/yargs')
 const { hideBin } = require('yargs/helpers')
 const argv = yargs(hideBin(process.argv)).argv
 
-const indexResetOffset = 0;
+const indexResetOffset = 0
+const timeout = 100
 const fileredDate = [
-"8//2023",				
-"8//2023",				
+// "8/28/2023",				
+// "8/29/2023",				
 ]
 
 dotenv.config();
@@ -93,13 +94,13 @@ const courseIds = {
 				const element = data?.rows[index];
 	
 				const name = element?.name;
-				const email = element?.email;
+				const email = element?.email.replace(/\s/ig, '').toLowerCase();
 				const batchName = element?.batch.toLowerCase().replace(/\s/g,'')
 				const batch = batches[batchName];
 				const mobile = element?.mobile || "";
 				const role = element?.role;
-				const primaryEmail = element?.primaryEmail;
-				const secondaryEmail = element?.secondaryEmail;
+				const primaryEmail = element?.primaryEmail?.toLowerCase();
+				const secondaryEmail = element?.secondaryEmail?.toLowerCase();
 				const program = programs[batch] || 0;
 				const courseId = courseIds[batchName];
 
@@ -110,11 +111,10 @@ const courseIds = {
 					setTimeout(async () => {
 						const response = await fetch(url, {
 							method: 'POST',
-							body: argv?.mentor ? JSON.stringify({ name, email: secondaryEmail || primaryEmail, mobile, role }) : JSON.stringify({...element, batch, program, mobile}),
+							body: argv?.mentor ? JSON.stringify({ name, email: secondaryEmail || primaryEmail, mobile, role }) : JSON.stringify({...element, batch, program, mobile, email}),
 							headers: { 'Content-Type': 'application/json', authorization: `bearer ${token}` },
 						});
 	
-
 						let guviResponse 
 						if(!argv?.mentor){
 							const resp = await fetch(process.env.GUVI_ENDPOINT, {
@@ -145,7 +145,7 @@ const courseIds = {
 	
 						writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, outputData, { flag: 'a' });
 	
-					}, 500 * (index - indexResetOffset))
+					}, timeout * (index - indexResetOffset))
 				} else {
 					if (!argv?.mentor) {
 						console.log(index + 1, element?.batch, program, courseId,  ' ---> ', email);
