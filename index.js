@@ -11,8 +11,23 @@ const argv = yargs(hideBin(process.argv)).argv
 const indexResetOffset = 0
 const timeout = 100
 const fileredDate = [
-// "8/28/2023",				
-// "8/29/2023",				
+// "10/21/2023",				
+// "10/22/2023",				
+// "10/23/2023",				
+// "10/24/2023",				
+// "10/25/2023",				
+// "10/26/2023",				
+// "10/27/2023",				
+// "10/28/2023",				
+// "10/29/2023",				
+// "10/30/2023",				
+]
+
+const filterEmail = [
+"",
+"",
+"",
+"",
 ]
 
 dotenv.config();
@@ -59,21 +74,27 @@ const courseIds = {
 					outputData = 'name, email, mobile, batch, message, courseActivated\n';
 				}
 				if (!argv?.dry) {
-					writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, outputData, { flag: 'a' });
+					// writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, outputData, { flag: 'a' });
 				}
 				return;
 			}
-			if (!argv?.dry) {
-				writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, '\n', { flag: 'a' });
-			}
+			// if (!argv?.dry) {
+			// 	writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, '\n', { flag: 'a' });
+			// }
 		});
 
 		let data = await readXlsx(argv?.mentor ? 'mentors.xlsx' : 'students.xlsx', { schema: argv?.mentor ? mentorSchema : studentSchema });
 		console.log(`Total: ${data.rows.length}`)
 		if(fileredDate.length){
 			data.rows = data?.rows?.filter((time) => {
-				const date = time?.time.split(' ')[0]
+				const date = time?.time?.split(' ')[0]
 				return fileredDate.includes(date)
+			})
+		}
+		if(filterEmail.length){
+			data.rows = data?.rows?.filter((data) => {
+				const email = data?.email?.replace(/\s/ig, '').toLowerCase()
+				return filterEmail.map(i=>i.replace(/\s/ig, '').toLowerCase()).includes(email)
 			})
 		}
 		console.log(`Filtered: ${data.rows.length}\n`)
@@ -143,7 +164,7 @@ const courseIds = {
 							console.log(index + 1, res?.message, ' ---> ', roleName, secondaryEmail || primaryEmail);
 						}
 	
-						writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, outputData, { flag: 'a' });
+						// writeFileSync(argv?.mentor ? mentorOutputFile : studentOutputFile, outputData, { flag: 'a' });
 	
 					}, timeout * (index - indexResetOffset))
 				} else {
