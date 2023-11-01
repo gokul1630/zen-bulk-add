@@ -30,6 +30,7 @@ const filterEmail = [
 "",
 ]
 
+console.log('email list length', filterEmail.length);
 dotenv.config();
 
 const dateObj = (...args) => new Date(...args);
@@ -83,21 +84,45 @@ const courseIds = {
 			// }
 		});
 
-		let data = await readXlsx(argv?.mentor ? 'mentors.xlsx' : 'students.xlsx', { schema: argv?.mentor ? mentorSchema : studentSchema });
-		console.log(`Total: ${data.rows.length}`)
-		if(fileredDate.length){
-			data.rows = data?.rows?.filter((time) => {
-				const date = time?.time?.split(' ')[0]
-				return fileredDate.includes(date)
-			})
-		}
-		if(filterEmail.length){
-			data.rows = data?.rows?.filter((data) => {
-				const email = data?.email?.replace(/\s/ig, '').toLowerCase()
-				return filterEmail.map(i=>i.replace(/\s/ig, '').toLowerCase()).includes(email)
-			})
-		}
-		console.log(`Filtered: ${data.rows.length}\n`)
+        let data = await readXlsx(
+            argv?.mentor ? 'mentors.xlsx' : 'students.xlsx',
+            { schema: argv?.mentor ? mentorSchema : studentSchema }
+        );
+        console.log(`Total: ${data.rows.length}`);
+        if (fileredDate.length) {
+            data.rows = data?.rows?.filter((time) => {
+                const date = time?.time?.split(' ')[0];
+                return fileredDate.includes(date);
+            });
+        }
+        if (filterEmail.length) {
+            const convertedFilterEmail = filterEmail.map((i) =>
+                i.replace(/\s/gi, '').toLowerCase()
+            );
+            const convertedDataRow = data?.rows?.map((i) =>
+                i?.email?.replace(/\s/gi, '').toLowerCase()
+            );
+
+            console.log('\n');
+            console.log(
+                JSON.stringify(
+                    convertedFilterEmail.filter((data) => {
+                        return !convertedDataRow?.includes(data);
+                    })
+                )
+                    .replace('[', '')
+                    .replace(']', '')
+                    .replaceAll('"', '')
+                    .replaceAll(',', '\n')
+            );
+            console.log('\n');
+
+            data.rows = data?.rows?.filter((data) => {
+                const email = data?.email?.replace(/\s/gi, '').toLowerCase();
+                return convertedFilterEmail?.includes(email);
+            });
+        }
+        console.log(`Filtered: ${data.rows.length}\n`);
 
 		let rolesData = {}
 		if(argv?.console){
