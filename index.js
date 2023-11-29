@@ -9,7 +9,7 @@ const { hideBin } = require('yargs/helpers')
 const argv = yargs(hideBin(process.argv)).argv
 
 const indexResetOffset = 0
-const timeout = 100
+const timeout = 500
 const fileredDate = [
 // "10/21/2023",				
 // "10/22/2023",				
@@ -24,10 +24,6 @@ const fileredDate = [
 ]
 
 const filterEmail = [
-"",
-"",
-"",
-"",
 ]
 
 console.log('email list length', filterEmail.length);
@@ -157,7 +153,7 @@ const courseIds = {
 					setTimeout(async () => {
 						const response = await fetch(url, {
 							method: 'POST',
-							body: argv?.mentor ? JSON.stringify({ name, email: secondaryEmail || primaryEmail, mobile, role }) : JSON.stringify({...element, batch, program, mobile, email}),
+							body: argv?.mentor ? JSON.stringify({ name, email: secondaryEmail || primaryEmail, mobile, role }) : JSON.stringify({name, batch, program, mobile, email}),
 							headers: { 'Content-Type': 'application/json', authorization: `bearer ${token}` },
 						});
 	
@@ -176,8 +172,10 @@ const courseIds = {
 							});
 							guviResponse = await resp.json()
 						}
+						guviResponse.status ==='error'? console.log(guviResponse?.message) : null
 	
 						const res = await response.json();
+						res.error ? console.log(res?.error?.name) : null
 	
 						let outputData
 						if (!argv?.mentor) {
